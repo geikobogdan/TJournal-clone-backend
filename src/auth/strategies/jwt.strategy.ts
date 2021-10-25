@@ -19,6 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       throw new UnauthorizedException('Hет доступа к этой странице');
     }
-    return data;
+    delete user.password;
+    return user;
   }
 }

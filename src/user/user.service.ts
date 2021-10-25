@@ -1,6 +1,7 @@
+import { SearchUserDto } from './dto/search-user.dto';
 import { LoginUserDto } from './dto/login-user.dto';
 import { UserEntity } from './entities/user.entity';
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -13,7 +14,14 @@ export class UserService {
     private repository: Repository<UserEntity>,
   ) {}
 
-  create(dto: CreateUserDto) {
+  async create(dto: CreateUserDto) {
+    const user = await this.repository.findOne({ email: dto.email });
+    if (user) {
+      throw new HttpException(
+        'Эта почта уже используется',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     return this.repository.save(dto);
   }
 
@@ -27,9 +35,35 @@ export class UserService {
   findById(id: number) {
     return this.repository.findOne(id);
   }
+  async update(id: number, dto: UpdateUserDto) {
+    const user = await this.repository.findOne({ email: dto.email });
+    if (user) {
+      throw new HttpException(
+        'Эта почта уже используется',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return this.repository.update(id, dto);
+  }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
+  async search(dto: SearchUserDto) {
+    const qb = this.repository.createQueryBuilder('u');
+    qb.limit(dto.limit || 0);
+    qb.take(dto.take || 10);
+
+    if (dto.fullName) {
+      qb.andWhere(`u.fullName ILIKE :fullName`);
+    }
+
+    if (dto.email) {
+      qb.andWhere(`u.email ILIKE :email`);
+    }
+    qb.setParameters({
+      email: `%${dto.email}%`,
+      fullName: `%${dto.fullName}%`,
+    });
+    const [items, total] = await qb.getManyAndCount();
+    return { items, total };
   }
 
   remove(id: number) {

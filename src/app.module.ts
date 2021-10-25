@@ -20,6 +20,7 @@ import { AuthModule } from './auth/auth.module';
       password: 'root',
       database: 'tjournal',
       entities: [UserEntity, PostEntity, CommentEntity],
+      // entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true,
     }),
     UserModule,
