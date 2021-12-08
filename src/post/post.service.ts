@@ -1,6 +1,10 @@
 import { SearchPostDto } from './dto/search-post.dto';
 import { PostEntity } from './entities/post.entity';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -12,8 +16,16 @@ export class PostService {
     @InjectRepository(PostEntity)
     private postRepository: Repository<PostEntity>,
   ) {}
-  create(dto: CreatePostDto) {
-    return this.postRepository.save(dto);
+  create(dto: CreatePostDto, userId: number) {
+    const firstParagraph = dto.body.find((obj) => obj.type === 'paragraph')
+      ?.data?.text;
+    return this.postRepository.save({
+      title: dto.title,
+      body: dto.body,
+      tags: dto.tags,
+      description: firstParagraph || '',
+      user: { id: userId },
+    });
   }
 
   findAll() {
@@ -28,7 +40,8 @@ export class PostService {
     return { items, total };
   }
   async search(dto: SearchPostDto) {
-    const qb = this.postRepository.createQueryBuilder('p');
+    const qb = this.postRepository.createQueryBuilder('posts');
+    qb.leftJoinAndSelect('posts.user', 'user');
     qb.limit(dto.limit || 0);
     qb.take(dto.take || 10);
     if (dto.views) {
@@ -62,20 +75,31 @@ export class PostService {
     return this.postRepository.findOne(id);
   }
 
-  async update(id: number, dto: UpdatePostDto) {
+  async update(id: number, dto: UpdatePostDto, userId: number) {
     const find = await this.postRepository.findOne(id);
     if (!find) {
       throw new NotFoundException('Статья не найдена');
     }
-    return this.postRepository.update(id, dto);
+
+    const firstParagraph = dto.body.find((obj) => obj.type === 'paragraph')
+      ?.data?.text;
+
+    return this.postRepository.update(id, {
+      title: dto.title,
+      body: dto.body,
+      tags: dto.tags,
+      description: firstParagraph || '',
+    });
   }
 
-  async remove(id: number) {
+  async remove(id: number, userId: number) {
     const find = await this.postRepository.findOne(id);
     if (!find) {
       throw new NotFoundException('Статья не найдена');
     }
-
+    if (find.user.id !== userId) {
+      throw new ForbiddenException('Нет доступа к этой статье!');
+    }
     return this.postRepository.delete(id);
   }
 }
