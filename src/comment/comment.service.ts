@@ -1,3 +1,4 @@
+import { UserEntity } from 'src/user/entities/user.entity';
 import { CommentEntity } from './entities/comment.entity';
 import { Injectable } from '@nestjs/common';
 import { CreateCommentDto } from './dto/create-comment.dto';
@@ -12,16 +13,29 @@ export class CommentService {
     private commentRepository: Repository<CommentEntity>,
   ) {}
 
-  create(dto: CreateCommentDto) {
-    return this.commentRepository.save({
+  async create(dto: CreateCommentDto, userId: number) {
+    const comment = await this.commentRepository.save({
       text: dto.text,
       post: { id: dto.postId },
-      user: { id: 2 },
+      user: { id: userId },
     });
+    return this.commentRepository.findOne(
+      { id: comment.id },
+      { relations: ['user'] },
+    );
   }
 
-  findAll() {
-    return this.commentRepository.find();
+  async findAll(postId: number) {
+    const arr = await this.commentRepository.find({
+      [postId ? 'where' : '']: {
+        post: { id: postId },
+      },
+      relations: ['user', 'post'],
+    });
+    return arr.map((obj) => ({
+      ...obj,
+      post: { id: obj.post.id, title: obj.post.title },
+    }));
   }
 
   findOne(id: number) {

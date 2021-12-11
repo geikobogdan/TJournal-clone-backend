@@ -48,13 +48,13 @@ export class PostService {
       qb.orderBy('views', dto.views);
     }
     if (dto.body) {
-      qb.andWhere(`p.body ILIKE :body`);
+      qb.andWhere(`posts.body ILIKE :body`);
     }
     if (dto.title) {
-      qb.andWhere(`p.title ILIKE :title`);
+      qb.andWhere(`posts.title ILIKE :title`);
     }
     if (dto.tag) {
-      qb.andWhere(`p.tags ILIKE :tag`);
+      qb.andWhere(`posts.tags ILIKE :tag`);
     }
     qb.setParameters({
       title: `%${dto.title}%`,
